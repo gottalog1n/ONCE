@@ -3,75 +3,110 @@ package io.github.some_example_name;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
-import java.util.Iterator;
-
 public class Player extends GameObject {
-    private final float SPEED = 2f;
-    private final float MAX_LIFE = 5f;
-    private float life;
-    private Vector2 moveDirection = new Vector2();
-    private Vector2 lastDirection = new Vector2(1, 0);
-    private Viewport viewport;
-    private Array<Attack> attacks = new Array<>();
-    private Animation<Texture> attackAnimation;
-    private Sound attackSound;
-    private float attackTimer;
+    private static final float SCALE = 1 / 32f;
+    private static final float SPEED = 2f;
+    private static final float LIFE = 5f;
+    private static final float ATTACK_COOLDOWN = 1.6f;
 
-    public Player(float x, float y, Viewport viewport, Texture texture, Animation<Texture> anim, Sound sound) {
-        super(x, y, texture.getWidth() / 32f, texture.getHeight() / 32f, texture);
-        this.viewport = viewport;
-        this.attackAnimation = anim;
-        this.attackSound = sound;
+    private final Vector2 moveDirection = new Vector2(0, 0);
+    private final Vector2 lastDirection = new Vector2(1, 0); // used for attacks; default is right
+    private float life = LIFE;
+    private float attackTimer;
+    private final Array<Attack> attacks = new Array<>();
+    private final Animation<Texture> attackAnimation;
+    private final Viewport gameViewport;
+    private final Sound attackSfx;
+
+    public Player(float x, float y,
+                  Viewport gameViewport,
+                  Texture texture,
+                  Animation<Texture> attackAnimation,
+                  Sound attackSfx) {
+        super(x, y, texture.getWidth() * SCALE, texture.getHeight() * SCALE, texture);
         reset(x, y);
+        this.gameViewport = gameViewport;
+        this.attackAnimation = attackAnimation;
+        this.attackSfx = attackSfx;
     }
 
     public void reset(float x, float y) {
         rect.setPosition(x, y);
-        life = MAX_LIFE;
+        life = LIFE;
+        attackTimer = ATTACK_COOLDOWN;
         attacks.clear();
-        attackTimer = 1.6f;
     }
 
     @Override
-    public void update(float delta) {
-        // Movement Logic
-        if (!moveDirection.isZero()) {
-            float newX = rect.x + moveDirection.x * SPEED * delta;
-            float newY = rect.y + moveDirection.y * SPEED * delta;
-            rect.x = MathUtils.clamp(newX, 0, viewport.getWorldWidth() - rect.width);
-            rect.y = MathUtils.clamp(newY, 0, viewport.getWorldHeight() - rect.height);
+    void update(float deltaTime) {
+        // Spawn new attack hitbox?
+        if (canAttack(deltaTime)) {
+            Vector2 playerCenter = getCenter(TMP_VEC2);
+            attackSfx.play();
+            attacks.add(new Attack(playerCenter, lastDirection, attackAnimation));
         }
 
-        // Attack Logic
+        // Update attack hitbox life spans
+        var iterator = attacks.iterator();
+        while (iterator.hasNext()) {
+            Attack attack = iterator.next();
+            attack.update(deltaTime);
+            if (attack.isDone()) {
+                iterator.remove();
+            }
+        }
+
+        // Move player
+        move(deltaTime);
+    }
+
+    private void move(float deltaTime) {
+        if (moveDirection.isZero()) return;
+
+        float newX = rect.getX() + moveDirection.x * SPEED * deltaTime;
+        float newY = rect.getY() + moveDirection.y * SPEED * deltaTime;
+
+        // Clamp to screen bounds
+        newX = Math.clamp(newX, 0, gameViewport.getWorldWidth() - rect.getWidth());
+        newY = Math.clamp(newY, 0, gameViewport.getWorldHeight() - rect.getHeight());
+
+        rect.setPosition(newX, newY);
+    }
+
+    public void changeDirection(Vector2 direction) {
+        if (!direction.isZero()) {
+            lastDirection.set(direction);
+        }
+        moveDirection.set(direction);
+    }
+
+    public float getLife() {
+        return life;
+    }
+
+    public void subLife(float amount) {
+        this.life -= amount;
+    }
+
+    public boolean isDead() {
+        return life <= 0f;
+    }
+
+    public boolean canAttack(float delta) {
         attackTimer -= delta;
-        if (attackTimer <= 0) {
-            attackTimer = 1.6f;
-            Vector2 center = getCenter(new Vector2());
-            attacks.add(new Attack(center.x, center.y, lastDirection, attackAnimation));
-            attackSound.play();
+        if (attackTimer <= 0f) {
+            attackTimer = ATTACK_COOLDOWN;
+            return true;
         }
 
-        // Update active attacks
-        Iterator<Attack> it = attacks.iterator();
-        while (it.hasNext()) {
-            Attack a = it.next();
-            a.update(delta);
-            if (a.isDone()) it.remove();
-        }
+        return false;
     }
 
-    public void changeDirection(Vector2 dir) {
-        moveDirection.set(dir).nor();
-        if (!moveDirection.isZero()) lastDirection.set(moveDirection);
+    public Array<Attack> getAttacks() {
+        return attacks;
     }
-
-    public void subtractLife(float amount) { life = Math.max(0, life - amount); }
-    public float getLife() { return life; }
-    public boolean isAlive() { return life > 0; }
-    public Array<Attack> getAttacks() { return attacks; }
 }
