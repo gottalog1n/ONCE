@@ -26,14 +26,14 @@ public class GameScreen extends ScreenAdapter {
         gameViewport = new ExtendViewport(16, 9);
         uiViewport = new ScreenViewport();
 
-        background = new Texture("background.png");
+        background = new Texture("bgd.png");
         background.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
         playerTex = new Texture("player.png");
         slimeTex = new Texture("slime.png");
 
         // Load Attack Animation
         Array<Texture> frames = new Array<>();
-        for(int i=0; i<14; i++) frames.add(new Texture("slash" + String.format("%02d", i) + ".png"));
+        for(int i=0; i<1; i++) frames.add(new Texture("slash" + "_" + String.format("%02d", i) + ".png"));
         Animation<Texture> attackAnim = new Animation<>(1f/12f, frames);
 
         player = new Player(8, 4.5f, gameViewport, playerTex, attackAnim, Gdx.audio.newSound(Gdx.files.internal("slash.wav")));

@@ -43,7 +43,6 @@ public class ControlScreen extends ScreenAdapter {
         drawCenteredText("W A S D - Move", centerX, centerY + 60);
         drawCenteredText("SPACE - Start Game", centerX, centerY + 20);
         drawCenteredText("R - Restart (on Game Over)", centerX, centerY - 20);
-
         game.getBatch().end();
     }
 
