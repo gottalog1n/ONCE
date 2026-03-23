@@ -1,61 +1,77 @@
 package io.github.some_example_name;
 
-import com.badlogic.gdx.*;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.Animation;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.viewport.Viewport;
 
-public class Player {
-    Texture tex;
-    public float x, y;
-    float speed = 200;
+import java.util.Iterator;
 
-    float shootCooldown = 0;
+public class Player extends GameObject {
+    private final float SPEED = 2f;
+    private final float MAX_LIFE = 5f;
+    private float life;
+    private Vector2 moveDirection = new Vector2();
+    private Vector2 lastDirection = new Vector2(1, 0);
+    private Viewport viewport;
+    private Array<Attack> attacks = new Array<>();
+    private Animation<Texture> attackAnimation;
+    private Sound attackSound;
+    private float attackTimer;
 
-    public Player(Texture tex, float x, float y) {
-        this.tex = tex;
-        this.x = x;
-        this.y = y;
+    public Player(float x, float y, Viewport viewport, Texture texture, Animation<Texture> anim, Sound sound) {
+        super(x, y, texture.getWidth() / 32f, texture.getHeight() / 32f, texture);
+        this.viewport = viewport;
+        this.attackAnimation = anim;
+        this.attackSound = sound;
+        reset(x, y);
     }
 
+    public void reset(float x, float y) {
+        rect.setPosition(x, y);
+        life = MAX_LIFE;
+        attacks.clear();
+        attackTimer = 1.6f;
+    }
+
+    @Override
     public void update(float delta) {
-        if (Gdx.input.isKeyPressed(Input.Keys.W)) y += speed * delta;
-        if (Gdx.input.isKeyPressed(Input.Keys.S)) y -= speed * delta;
-        if (Gdx.input.isKeyPressed(Input.Keys.A)) x -= speed * delta;
-        if (Gdx.input.isKeyPressed(Input.Keys.D)) x += speed * delta;
-    }
+        // Movement Logic
+        if (!moveDirection.isZero()) {
+            float newX = rect.x + moveDirection.x * SPEED * delta;
+            float newY = rect.y + moveDirection.y * SPEED * delta;
+            rect.x = MathUtils.clamp(newX, 0, viewport.getWorldWidth() - rect.width);
+            rect.y = MathUtils.clamp(newY, 0, viewport.getWorldHeight() - rect.height);
+        }
 
-    public void shoot(Array<Projectile> bullets, Array<Enemy> enemies) {
-        shootCooldown -= Gdx.graphics.getDeltaTime();
+        // Attack Logic
+        attackTimer -= delta;
+        if (attackTimer <= 0) {
+            attackTimer = 1.6f;
+            Vector2 center = getCenter(new Vector2());
+            attacks.add(new Attack(center.x, center.y, lastDirection, attackAnimation));
+            attackSound.play();
+        }
 
-        if (shootCooldown <= 0) {
-            shootCooldown = 0.5f;
-
-            Enemy nearest = null;
-            float minDist = Float.MAX_VALUE;
-
-            for (Enemy e : enemies) {
-                float dist = Vector2.dst(x, y, e.x, e.y);
-                if (dist < minDist) {
-                    minDist = dist;
-                    nearest = e;
-                }
-            }
-
-            if (nearest != null) {
-                float dx = nearest.x - x;
-                float dy = nearest.y - y;
-                float len = (float)Math.sqrt(dx*dx + dy*dy);
-
-                bullets.add(new Projectile(tex, x, y,
-                    (dx / len) * 300,
-                    (dy / len) * 300));
-            }
+        // Update active attacks
+        Iterator<Attack> it = attacks.iterator();
+        while (it.hasNext()) {
+            Attack a = it.next();
+            a.update(delta);
+            if (a.isDone()) it.remove();
         }
     }
 
-    public void draw(SpriteBatch batch) {
-        batch.draw(tex, x, y);
+    public void changeDirection(Vector2 dir) {
+        moveDirection.set(dir).nor();
+        if (!moveDirection.isZero()) lastDirection.set(moveDirection);
     }
+
+    public void subtractLife(float amount) { life = Math.max(0, life - amount); }
+    public float getLife() { return life; }
+    public boolean isAlive() { return life > 0; }
+    public Array<Attack> getAttacks() { return attacks; }
 }

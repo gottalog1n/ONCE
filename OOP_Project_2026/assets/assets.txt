@@ -1,4 +1,4 @@
-.gitkeep
+Exp.gif
 bullet.png
 dk.jpg
 enemy.png
