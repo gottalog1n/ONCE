@@ -36,20 +36,32 @@ public class GameScreen extends ScreenAdapter {
 
     // Assets
     private final Texture bgdTexture = new Texture(Gdx.files.internal("bgd.png"));
-    private final Texture playerTexture = new Texture(Gdx.files.internal("player.png"));
     private final Texture enemyTexture = new Texture(Gdx.files.internal("slime.png"));
+
+    // Attack
     private final Array<Texture> attackTextures = loadAttackTextures();
     private final Animation<Texture> attackAnimation = new Animation<>(1 / 12f, attackTextures);
+
+    // Player animations — must be declared BEFORE player
+    private final Array<Texture> idleTextures = loadIdleTextures();
+    private final Array<Texture> walkWestTextures = loadWalkWestTextures();
+    private final Array<Texture> walkEastTextures = loadWalkEastTextures();
+    private final Animation<Texture> idleAnimation = new Animation<>(1 / 8f, idleTextures, Animation.PlayMode.LOOP);
+    private final Animation<Texture> walkWestAnimation = new Animation<>(1 / 10f, walkWestTextures, Animation.PlayMode.LOOP);
+    private final Animation<Texture> walkEastAnimation = new Animation<>(1 / 10f, walkEastTextures, Animation.PlayMode.LOOP);
+
     private final Music music = Gdx.audio.newMusic(Gdx.files.internal("nightsplitter.mp3"));
     private final Sound slashSfx = Gdx.audio.newSound(Gdx.files.internal("slash.wav"));
 
     // Player
     private final Player player = new Player(
-        WORLD_WIDTH / 2f, WORLD_HEIGHT / 2f, // spawn location
-        gameViewport, // boundary
-        playerTexture, // graphic
-        attackAnimation, // attack animation
-        slashSfx // attack sound effect
+        WORLD_WIDTH / 2f, WORLD_HEIGHT / 2f,
+        gameViewport,
+        idleAnimation,
+        walkWestAnimation,
+        walkEastAnimation,
+        attackAnimation,
+        slashSfx
     );
     private final Vector2 inputMovement = new Vector2();
 
@@ -72,6 +84,30 @@ public class GameScreen extends ScreenAdapter {
         Array<Texture> textures = new Array<>(14);
         for (int i = 0; i <= 13; i++) {
             textures.add(new Texture(Gdx.files.internal(String.format("slash_%02d.png", i))));
+        }
+        return textures;
+    }
+
+    private Array<Texture> loadIdleTextures() {
+        Array<Texture> textures = new Array<>(4);
+        for (int i = 0; i <= 3; i++) {
+            textures.add(new Texture(Gdx.files.internal(String.format("Char_east_Idle_%02d.png", i))));
+        }
+        return textures;
+    }
+
+    private Array<Texture> loadWalkWestTextures() {
+        Array<Texture> textures = new Array<>(6);
+        for (int i = 0; i <= 5; i++) {
+            textures.add(new Texture(Gdx.files.internal(String.format("Char_west_run_%02d.png", i))));
+        }
+        return textures;
+    }
+
+    private Array<Texture> loadWalkEastTextures() {
+        Array<Texture> textures = new Array<>(6);
+        for (int i = 0; i <= 5; i++) {
+            textures.add(new Texture(Gdx.files.internal(String.format("Char_east_Run_%02d.png", i))));
         }
         return textures;
     }
@@ -109,49 +145,37 @@ public class GameScreen extends ScreenAdapter {
         } else if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
             resetGame();
         }
+        // DELETE the broken block that was here
 
         draw();
     }
 
     private void processInput() {
         inputMovement.setZero();
-        if (Gdx.input.isKeyPressed(Input.Keys.W)) {
-            inputMovement.y += 1;
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.S)) {
-            inputMovement.y -= 1;
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.A)) {
-            inputMovement.x -= 1;
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.D)) {
-            inputMovement.x += 1;
-        }
+        if (Gdx.input.isKeyPressed(Input.Keys.W)) inputMovement.y += 1;
+        if (Gdx.input.isKeyPressed(Input.Keys.S)) inputMovement.y -= 1;
+        if (Gdx.input.isKeyPressed(Input.Keys.A)) inputMovement.x -= 1;
+        if (Gdx.input.isKeyPressed(Input.Keys.D)) inputMovement.x += 1;
 
         inputMovement.nor();
         player.changeDirection(inputMovement);
     }
 
     private void updateLogic(float deltaTime) {
-        // Player (attacks + movement)
         player.update(deltaTime);
 
-        // Enemy spawning
         enemySpawnTimer += deltaTime;
         if (enemySpawnTimer >= ENEMY_SPAWN_INTERVAL) {
             enemySpawnTimer = 0f;
-            Enemy newEnemy = Enemy.spawn(gameViewport, enemyTexture, player);
-            enemies.add(newEnemy);
+            enemies.add(Enemy.spawn(gameViewport, enemyTexture, player));
         }
 
-        // Update enemies
         for (Enemy enemy : enemies) {
             enemy.update(deltaTime);
         }
     }
 
     private void checkCollisions(float deltaTime) {
-        // Check attack hitbox vs enemies
         for (Attack attack : player.getAttacks()) {
             var iterator = enemies.iterator();
             while (iterator.hasNext()) {
@@ -163,12 +187,9 @@ public class GameScreen extends ScreenAdapter {
             }
         }
 
-        // Check enemies vs player
         int numHits = 0;
         for (Enemy enemy : enemies) {
-            if (player.overlaps(enemy)) {
-                ++numHits;
-            }
+            if (player.overlaps(enemy)) ++numHits;
         }
 
         if (numHits > 0) {
@@ -180,23 +201,16 @@ public class GameScreen extends ScreenAdapter {
         ScreenUtils.clear(Color.BLACK);
 
         gameViewport.apply();
-
-        // Draw textures
         batch.setProjectionMatrix(gameViewport.getCamera().combined);
         batch.begin();
         drawBackground();
-        for (Enemy enemy : enemies) {
-            enemy.draw(batch);
-        }
-        for (Attack attack : player.getAttacks()) {
-            attack.draw(batch);
-        }
+        for (Enemy enemy : enemies) enemy.draw(batch);
+        for (Attack attack : player.getAttacks()) attack.draw(batch);
         player.draw(batch);
         batch.end();
 
         drawDebug();
 
-        // Draw UI
         uiViewport.apply();
         batch.setProjectionMatrix(uiViewport.getCamera().combined);
         batch.begin();
@@ -212,49 +226,30 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void drawBackground() {
-        // Calculate how many times the texture fits into the world dimensions
         float u2 = gameViewport.getWorldWidth() / WORLD_WIDTH;
         float v2 = gameViewport.getWorldHeight() / WORLD_HEIGHT;
-
-        // Draw with custom UV coordinates to correctly repeat the texture
-        batch.draw(bgdTexture,
-            0, 0,
-            gameViewport.getWorldWidth(),
-            gameViewport.getWorldHeight(),
-            0, 0,
-            u2, v2
-        );
+        batch.draw(bgdTexture, 0, 0, gameViewport.getWorldWidth(), gameViewport.getWorldHeight(), 0, 0, u2, v2);
     }
 
     private void drawDebug() {
-        if (!DRAW_DEBUG) {
-            return;
-        }
+        if (!DRAW_DEBUG) return;
 
         shapeRenderer.setProjectionMatrix(gameViewport.getCamera().combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-
-        // Draw player (green)
         player.drawDebug(shapeRenderer, Color.GREEN);
-
-        // Draw enemies (red)
-        for (Enemy enemy : enemies) {
-            enemy.drawDebug(shapeRenderer, Color.RED);
-        }
-
-        // Draw attack hitbox (yellow)
-        for (Attack attack : player.getAttacks()) {
-            attack.drawDebug(shapeRenderer, Color.YELLOW);
-        }
+        for (Enemy enemy : enemies) enemy.drawDebug(shapeRenderer, Color.RED);
+        for (Attack attack : player.getAttacks()) attack.drawDebug(shapeRenderer, Color.YELLOW);
         shapeRenderer.end();
     }
 
     @Override
     public void dispose() {
         bgdTexture.dispose();
-        playerTexture.dispose();
         enemyTexture.dispose();
         attackTextures.forEach(Texture::dispose);
+        idleTextures.forEach(Texture::dispose);
+        walkWestTextures.forEach(Texture::dispose);
+        walkEastTextures.forEach(Texture::dispose);
         music.dispose();
         slashSfx.dispose();
     }

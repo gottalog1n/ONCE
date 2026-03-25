@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/MainMenuScreen/MainMenuScreen.iml" filepath="$PROJECT_DIR$/MainMenuScreen/MainMenuScreen.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/ONCE.iml" filepath="$PROJECT_DIR$/.idea/ONCE.iml" />
     </modules>
   </component>
