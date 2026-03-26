@@ -7,8 +7,8 @@ import com.badlogic.gdx.math.Vector2;
 
 public class Attack extends GameObject {
     // Constants for the attack behavior
-    private static final float SIZE = 1f;
-    private static final float DURATION = 0.4f;
+    private static final float SIZE = 4f;
+    private static final float DURATION = 0.2f;
 
     private float lifeSpan = DURATION;
     private final Animation<Texture> animation;

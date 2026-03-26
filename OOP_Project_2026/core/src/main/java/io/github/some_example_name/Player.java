@@ -9,7 +9,7 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 public class Player extends GameObject {
-    private static final float SCALE = 1 / 32f;
+    private static final float SCALE = 1 / 64f;
     private static final float SPEED = 2f;
     private static final float LIFE = 5f;
     private static final float ATTACK_COOLDOWN = 1.6f;
@@ -24,9 +24,14 @@ public class Player extends GameObject {
     private final Animation<Texture> idleAnimation;
     private final Animation<Texture> walkWestAnimation;
     private final Animation<Texture> walkEastAnimation;
+
     private float animTime = 0f;
-    private boolean facingWest = false;
-    private boolean isMoving = false;
+
+    // เพิ่มการจัดการสถานะ (State Machine) ของตัวละคร
+    private enum State {
+        IDLE, WALK_WEST, WALK_EAST
+    }
+    private State currentState = State.IDLE;
 
     private final Viewport gameViewport;
     private final Sound attackSfx;
@@ -58,14 +63,33 @@ public class Player extends GameObject {
         attackTimer = ATTACK_COOLDOWN;
         attacks.clear();
         animTime = 0f;
+        currentState = State.IDLE;
     }
 
     @Override
     void update(float deltaTime) {
+        // ประเมินสถานะถัดไปจากทิศทางการเดิน
+        State nextState = State.IDLE;
+        if (!moveDirection.isZero()) {
+            if (moveDirection.x < 0) {
+                nextState = State.WALK_WEST;
+            } else if (moveDirection.x > 0) {
+                nextState = State.WALK_EAST;
+            } else {
+                // กรณีเดินขึ้นหรือลงอย่างเดียว ให้ยึดแอนิเมชันตามทิศทางล่าสุด
+                nextState = (currentState == State.WALK_WEST || lastDirection.x < 0)
+                    ? State.WALK_WEST : State.WALK_EAST;
+            }
+        }
+
+        // รีเซ็ตเวลาแอนิเมชันเมื่อมีการเปลี่ยนสถานะ
+        if (currentState != nextState) {
+            currentState = nextState;
+            animTime = 0f;
+        }
+
+        // อัปเดตเวลาแอนิเมชัน
         animTime += deltaTime;
-        isMoving = !moveDirection.isZero();
-        if (moveDirection.x < 0) facingWest = true;
-        else if (moveDirection.x > 0) facingWest = false;
 
         if (canAttack(deltaTime)) {
             Vector2 playerCenter = getCenter(TMP_VEC2);
@@ -89,7 +113,6 @@ public class Player extends GameObject {
         float newX = rect.getX() + moveDirection.x * SPEED * deltaTime;
         float newY = rect.getY() + moveDirection.y * SPEED * deltaTime;
 
-        // Guard: only clamp if world is actually larger than the player
         float maxX = Math.max(0, gameViewport.getWorldWidth() - rect.getWidth());
         float maxY = Math.max(0, gameViewport.getWorldHeight() - rect.getHeight());
 
@@ -101,13 +124,13 @@ public class Player extends GameObject {
 
     @Override
     public void draw(Batch batch) {
-        Animation<Texture> current;
-        if (isMoving) {
-            current = facingWest ? walkWestAnimation : walkEastAnimation;
-        } else {
-            current = idleAnimation;
-        }
-        Texture frame = current.getKeyFrame(animTime);
+        Animation<Texture> current = switch (currentState) {
+            case WALK_WEST -> walkWestAnimation;
+            case WALK_EAST -> walkEastAnimation;
+            default -> idleAnimation;
+        };
+
+        Texture frame = current.getKeyFrame(animTime, true);
         batch.draw(frame, rect.x, rect.y, rect.width, rect.height);
     }
 

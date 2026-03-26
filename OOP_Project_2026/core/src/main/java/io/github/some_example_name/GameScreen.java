@@ -24,7 +24,7 @@ public class GameScreen extends ScreenAdapter {
     private static final float WORLD_HEIGHT = 9f;
     private static final float ENEMY_SPAWN_INTERVAL = 1.5f;
     private static final float DAMAGE_PER_SECOND = 1.0f;
-    private static final boolean DRAW_DEBUG = false;
+    private static final boolean DRAW_DEBUG = true;
 
     // General
     private final Batch batch;
@@ -35,7 +35,7 @@ public class GameScreen extends ScreenAdapter {
     private final GlyphLayout layout = new GlyphLayout();
 
     // Assets
-    private final Texture bgdTexture = new Texture(Gdx.files.internal("bgd.png"));
+    private final Texture bgdTexture = new Texture(Gdx.files.internal("Map01_1080.png"));
     private final Texture enemyTexture = new Texture(Gdx.files.internal("slime.png"));
 
     // Attack
@@ -46,9 +46,9 @@ public class GameScreen extends ScreenAdapter {
     private final Array<Texture> idleTextures = loadIdleTextures();
     private final Array<Texture> walkWestTextures = loadWalkWestTextures();
     private final Array<Texture> walkEastTextures = loadWalkEastTextures();
-    private final Animation<Texture> idleAnimation = new Animation<>(1 / 8f, idleTextures, Animation.PlayMode.LOOP);
-    private final Animation<Texture> walkWestAnimation = new Animation<>(1 / 10f, walkWestTextures, Animation.PlayMode.LOOP);
-    private final Animation<Texture> walkEastAnimation = new Animation<>(1 / 10f, walkEastTextures, Animation.PlayMode.LOOP);
+    private final Animation<Texture> idleAnimation = new Animation<>(5f, idleTextures, Animation.PlayMode.LOOP);
+    private final Animation<Texture> walkWestAnimation = new Animation<>(5f, walkWestTextures, Animation.PlayMode.LOOP);
+    private final Animation<Texture> walkEastAnimation = new Animation<>(5f, walkEastTextures, Animation.PlayMode.LOOP);
 
     private final Music music = Gdx.audio.newMusic(Gdx.files.internal("nightsplitter.mp3"));
     private final Sound slashSfx = Gdx.audio.newSound(Gdx.files.internal("slash.wav"));

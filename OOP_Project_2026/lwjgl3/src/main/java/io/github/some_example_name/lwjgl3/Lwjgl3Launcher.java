@@ -20,7 +20,7 @@ public class Lwjgl3Launcher {
         configuration.setTitle("Slime Survivor");
 
         // Sets the window to 1080p 16:9 ratio
-        configuration.setWindowedMode(1280, 720);
+        configuration.setWindowedMode(1920, 1080);
 
         configuration.useVsync(true);
         configuration.setForegroundFPS(60);
